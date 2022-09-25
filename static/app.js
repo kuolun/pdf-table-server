@@ -13,6 +13,9 @@ $("#searchForm").submit(function(event) {
   // Send the data using post
   const posting = $.post(url, {device,product_code});
 
+  //先把上一次搜尋結果清掉
+  $("#result").empty()
+
   // Put the results in a div
   posting.done(function(data) {
     // const content = $(data).find("#content");
