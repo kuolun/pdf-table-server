@@ -1,7 +1,7 @@
 import glob
 import os
 # 檔案or目錄的複製、刪除、移動位置、更改名稱
-import shutil
+# import shutil
 # 多執行緒
 import threading
 import time

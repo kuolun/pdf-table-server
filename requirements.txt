@@ -3,3 +3,4 @@ Flask==2.2.2
 beautifulsoup4==4.11.1
 PyPDF2==2.10.9
 pandas==1.5.0
+tabula-py==2.5.1
