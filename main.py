@@ -1,3 +1,18 @@
+# 必須邀安裝Java
+
+
+# third-party library
+# get data
+import requests
+from bs4 import BeautifulSoup
+# 偵測Comparison with the Predicate Device文字在第幾頁
+# import PyPDF2
+from PyPDF2 import PdfFileReader
+# table轉df
+import tabula
+# import pandas as pd
+from pandas import concat
+
 import glob
 import os
 # 檔案or目錄的複製、刪除、移動位置、更改名稱
@@ -13,22 +28,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Tuple, List, Any
 
-# get data
-import requests
-from bs4 import BeautifulSoup
 from flask import Flask, render_template, request
 
-# 偵測Comparison with the Predicate Device文字在第幾頁
-# import PyPDF2
-from PyPDF2 import PdfFileReader
 # import re
 from re import search
-
-# table轉df
-import tabula
-
-# import pandas as pd
-from pandas import concat
 
 app = Flask(__name__)
 
