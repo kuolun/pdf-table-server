@@ -1,9 +1,8 @@
 beautifulsoup4
 Flask
-gunicorn
+gunicorn==20.1.0
 lxml
 pandas
 PyPDF2
 requests
 tabula-py
-
