@@ -6,9 +6,12 @@
     <title>Python project</title>
     {# bs5 #}
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-iYQeCzEYFbKjA/T2uDLTpkwGzCiq6soy8tYaI1GyVh/UjpbCx/TYkiZhlZB6+fzT" crossorigin="anonymous">
-
+    <link rel="stylesheet" href="../static/styles.css">
 </head>
 <body>
+ <div class="loading-div" id="loading" style="display: none">
+        <img src="../static/loading.gif"  alt="loading"/>
+ </div>
 <form action="/search" method="post" target="_blank" id="searchForm">
     <h1>PDF downloader & HTML table transformer</h1>
     <label for="device">Device Name</label>
