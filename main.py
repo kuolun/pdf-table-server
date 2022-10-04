@@ -1,22 +1,21 @@
-# 必須邀安裝Java
-
-
 # third-party library
+from flask import Flask, render_template, request
+
 # get data
 import requests
 from bs4 import BeautifulSoup
-# 偵測Comparison with the Predicate Device文字在第幾頁
+
+# 偵測Comparison文字在第幾頁
 # import PyPDF2
-from PyPDF2 import PdfFileReader
+from PyPDF2 import PdfReader
+
 # table轉df
-import tabula
+import camelot
 # import pandas as pd
 from pandas import concat
 
 import glob
 import os
-# 檔案or目錄的複製、刪除、移動位置、更改名稱
-# import shutil
 # 多執行緒
 import threading
 import time
@@ -24,14 +23,16 @@ import time
 # 處理壓縮檔
 import zipfile
 from datetime import datetime
+
 # 處理路徑問題
 from pathlib import Path
 from typing import Tuple, List, Any
 
-from flask import Flask, render_template, request
-
 # import re
 from re import search
+
+# 刪除資料夾
+import shutil
 
 app = Flask(__name__)
 
@@ -66,7 +67,7 @@ class SearchHelper:
     def __init__(self, d_name: str, p_code: str):
         # zip檔
         self.zip_file = None
-
+        # 已下載pdf數量
         self.downloaded_pdf = 0
         # 存檔路徑
         self.dest_dir = None
@@ -76,35 +77,30 @@ class SearchHelper:
         self.p_code = p_code
         self.pdf_download_file = []  # 下載pdf存放url清單
 
-    def find_text(self, x_file, x_string):
-        # xfile : the PDF file in which to look
-        # x_string : the string to look for
+    def find_text(self, search_file, search_string):
+        # xfile :  PDF file to search
+        # x_string :  string to search
         page_found = 0
 
-        if not Path.exists(x_file):
+        if not Path.exists(search_file):
             # 無此檔案
-            return False
+            return 0, 0
         else:
-            pdf_obj = open(x_file, 'rb')
-            reader = PdfFileReader(pdf_obj)
-            total_pages = reader.numPages
-            print(f"{x_file}--總頁數:{total_pages}\n")
+            reader = PdfReader(search_file)
+            number_of_pages = len(reader.pages)
+            print(f"{search_file}--總頁數:{number_of_pages}\n")
 
-            for i in range(0, total_pages):
-                content = ""
-                # 取得第i頁的文字
-                content += reader.getPage(i).extractText()
-                # print(content)
-                # content1 = content.encode('ascii', 'ignore').lower()
-                # 將第i頁的文字內容都轉小寫後比對"parison with"
-                res_search = search(x_string, content.lower())
-                print(f'page {i + 1}搜尋結果:{res_search}\n')
+            for page in reader.pages:
+                text = page.extract_text().lower()
+                res_search = search(search_string, text)
+                page_number = reader.get_page_number(page)
+                print(f'page:{page_number + 1}搜尋結果:{res_search}\n')
                 # 找到第一次出現的頁數就跳出
                 if res_search is not None:
-                    page_found = i + 1
+                    page_found = page_number + 1
                     break
 
-            return page_found, total_pages
+            return page_found, number_of_pages
 
     def export_html(self):
         threads = []
@@ -131,87 +127,61 @@ class SearchHelper:
 
         print("HTML轉檔完成")
 
-        # pdf轉成table
-
     def pdf_to_table(self, file, file_path):
         # 追蹤thread
         current_thread = threading.current_thread()
-        print(f'目前thread id:{current_thread.ident}')
 
+        print(f'目前thread id:{current_thread.ident}')
         print(f"轉換{file}為HTML中...\n")
         print(f'檔案路徑:{file_path}')
+
         # 開始測量
         start = time.time()
-        table_page, total_pages = self.find_text(file_path, 'parison with')
+        table_page_found, total_pages = self.find_text(file_path, 'comparison')
         # 結束測量
         end = time.time()
-        print(f'找{file}的comparison with 文字執行時間:{round(end - start, 2)}\n')
-        # self.show_html_status(f'找{file}的comparison with 文字執行時間:{round(end - start, 2)}')
+        print(f'找{file}的comparison文字執行時間:{round(end - start, 2)}\n')
+        print(f'table_page_found頁數:{table_page_found}\n')
 
-        print(f'table_page內容:{table_page}\n')
-
-        if table_page:
-            print(f'{file}的比較table開始頁數:{table_page}')
-            # self.show_html_status(f'{file}的比較table開始頁數:{table_page}')
+        # 如果有找到compariosn文字
+        if table_page_found:
+            print(f'{file}的comparison table開始頁數:{table_page_found}')
 
             # 開始測量
             start = time.time()
 
             # 沒pages參數預設只抓第一頁
-            tables = tabula.read_pdf(file_path, pages=f'{table_page}-{total_pages}', multiple_tables=False, stream=True)
+            # camelot.read_pdf需要的檔案路徑要為string，要把pathlib的obj轉成string
+            # filepath (str) – Filepath or URL of the PDF file.
+            file_path_str = str(file_path)
+            tables = camelot.read_pdf(file_path_str, pages=f"{table_page_found}-end", strip_text='\n')
 
             # 結束測量
             end = time.time()
             print(f'{file}找table執行時間:{round(end - start, 2)}\n')
-            # self.show_html_status(f'{file}找table執行時間:{round(end - start, 2)}')
 
             print(f'{file}table數:{len(tables)}')
-            # self.show_html_status(f'{file}table數:{len(tables)}')
-
-            concatenation_list = []
 
             for i in range(0, len(tables)):
-                # if i != 0:
-                #     # tables[i].df.drop([0], inplace=True)  # 更改原DF資料
-                #     tables[i].drop([0], inplace=True)  # 更改原DF資料
-                # print(tables[i].df)
-                print(f'tables[{i}]為:{tables[i]}')
-                concatenation_list.append(tables[i])
-
-            # print(concatenation_list)
-
-            # axis=0 直向合併
-            res = concat(concatenation_list, axis=0)
-
-            print(res)
-            print(type(res))
-
-            # 去除換行符號
-            # 去除NaN
-            # res.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r", "NaN"],
-            #             value=["", "", ""], regex=True, inplace=True)
-
-            res2 = res.fillna('')
-            print(res2)
-
-            df_html = res2.to_html(header=True, index=False)
-
-            # 產生html檔
-            # file_name = file_path.join(self.dest_dir, file)
-            file_name = f"{self.dest_dir}/{file}.html"
-            html_file = open(file_name, 'w', encoding='utf-8')
-            html_file.write(df_html)
-            html_file.close()
-
-            # self.htmls[file] = df_html
-            # self.ui.textBrowser.setText(df_html)
-            # self.show_html_status(f"=====匯出{file}的table HTML檔完成！=====")
+                table_report = tables[i].parsing_report
+                accuracy = round(table_report['accuracy'])
+                print(f"tables[{i}]表格準確度為:{accuracy}")
+                # table在第幾頁
+                table_at_page = tables[i].page
+                output_path = self.dest_dir / f"{file}-page{table_at_page}-table{i}-acc{accuracy}.html"
+                tables[i].to_html(output_path)
             print(f"=====匯出{file}的table HTML檔完成！=====")
         else:
-            print(f'{file}沒有comparison with的table\n')
+            print(f"{file}沒有comparison的table\n")
 
     # 搜尋網站資料筆數
     def search_website(self) -> Tuple[int, List[Any], str]:
+
+        # 先清空static/downloads內所有檔案
+        downloads_folder_path = Path.cwd() / 'static/downloads'
+        shutil.rmtree(downloads_folder_path)
+        os.mkdir(downloads_folder_path)
+
         self.url = f'{DOMAIN}/scripts/cdrh/cfdocs/cfpmn/pmn.cfm?' \
                    f'start_search=1&Panel=' \
                    f'&DeviceName={self.d_name}' \
@@ -266,6 +236,8 @@ class SearchHelper:
             for t in threads:
                 t.start()
                 print('thread starting..')
+                # 緩衝發送requests
+                time.sleep(0.5)
 
             # 發出多個thread, 等所有thread都跑完才執行後面程式碼
             for x in threads:
@@ -294,9 +266,6 @@ class SearchHelper:
                 file_zip.write(name, os.path.basename(name), zipfile.ZIP_DEFLATED)
 
             file_zip.close()
-
-            # 刪除資料夾
-            # shutil.rmtree(self.dest_dir)
 
             self.zip_file = f'static/downloads/{zip_file_name}'
 
@@ -333,8 +302,6 @@ class SearchHelper:
             else:
                 self.dest_dir = current_working_dir / 'static/downloads' / Path(
                     date_string + ' ' + self.d_name + ' ' + self.p_code)
-
-            # self.dest_dir = 'pdf-download-0822'  # 資料夾名稱
 
             # 若資料夾不存在則建立新的
             if not Path.exists(self.dest_dir):

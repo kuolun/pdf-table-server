@@ -6,3 +6,4 @@ pandas
 PyPDF2
 requests
 tabula-py
+camelot-py[base]
